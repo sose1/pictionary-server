@@ -1,4 +1,4 @@
-package pl.sose1
+package pl.sose1.repository
 
 import io.ktor.http.cio.websocket.*
 import java.util.*
