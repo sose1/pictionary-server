@@ -46,6 +46,9 @@ fun Application.module() {
         maxFrameSize = Long.MAX_VALUE
         masking = false
     }
+// TODO: 30.09.2020 Walidacja nazw użyktonika, zeby nie było przypadku kiedy jest kilu tych samych użytkowników
+// TODO: 30.09.2020 Usuwanie gracza z lobby gdy wyłacza sie aplikacja
+// TODO: 30.09.2020 Usuwanie gracza jak wyjdzie z activity
 
     routing {
         this.root()
@@ -69,20 +72,20 @@ fun Application.module() {
                                 LobbyRequestEventName.CREATE_LOBBY.name ->
                                     createLobby(outgoing, user)
                                 LobbyRequestEventName.CONNECT_TO_LOBBY.name ->
-                                    connectToLobby(lobbyRequestMessage, user, userSessions)
+                                    connectToLobby(lobbyRequestMessage.code, user, userSessions)
                             }
                         }
                     }
                 }
             } finally {
+                disconnectUser(userSessions, userSession.id)
                 userSessions -= userSession
             }
         }
     }
 }
 
-suspend fun createLobby(outgoing: SendChannel<Frame>,
-                        user: User) {
+suspend fun createLobby(outgoing: SendChannel<Frame>, user: User) {
     val lobby = Lobby()
     lobby.users.add(user)
     lobbies.add(lobby)
@@ -90,30 +93,31 @@ suspend fun createLobby(outgoing: SendChannel<Frame>,
     outgoing.send(Frame.Text(lobby.toJSON()))
 }
 
-suspend fun connectToLobby(
-        lobbyRequestMessage: LobbyRequestMessage,
-        user: User,
-        userSessions: MutableSet<UserSession>, ) {
-
-    lobbies.find { lobby ->
-        lobbyRequestMessage.code.equals(lobby.code)
-    }?.users?.add(user)
-
-    val lobby = lobbies.find { lobby ->
-        lobbyRequestMessage.code.equals(lobby.code)
-    }
-
-    lobby?.users?.forEach { _ -> sendResponse(user.userID, userSessions, lobby.toJSON()) }
-
+suspend fun connectToLobby(code: String?, user: User, userSessions: MutableSet<UserSession>, ) {
+    val lobby = findLobbyByCode(code)
+    lobby?.users?.add(user)
+    lobby?.users?.forEach {sendResponse(it.userID, userSessions, lobby.toJSON()) }
 }
 
-suspend fun sendResponse(id: UUID,
-                         userSessions: MutableSet<UserSession>,
-                         response: String) {
+suspend fun disconnectUser(userSessions: MutableSet<UserSession>, id: UUID) {
+    lobbies.forEach {lobby ->
+        val user = lobby.users.find { user ->
+            id == user.userID
+        }
+        user?.let { lobby.users.remove(user)
+            lobby.users.forEach { sendResponse(it.userID, userSessions, lobby.toJSON()) }
+        }
+    }
+}
+
+suspend fun sendResponse(id: UUID, userSessions: MutableSet<UserSession>, response: String) {
     userSessions.find { userSession ->
         id == userSession.id
     }?.session?.send(Frame.Text(response))
-
 }
 
-
+fun findLobbyByCode(code: String?): Lobby? = lobbies.find { lobby -> code == lobby.code }
+fun findUserInLobby(id: UUID?, code: String?): User? = findLobbyByCode(code)?.users
+        ?.find { user ->
+            id == user.userID
+        }
