@@ -12,10 +12,12 @@ import io.ktor.jackson.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.channels.SendChannel
+import pl.sose1.model.lobby.Lobby
 import pl.sose1.model.lobby.LobbyRequestEventName
 import pl.sose1.model.lobby.LobbyRequestMessage
 import pl.sose1.model.lobby.toJSON
-import pl.sose1.repository.Client
+import pl.sose1.model.user.User
+import pl.sose1.model.user.UserSession
 import java.time.Duration
 import java.util.*
 import kotlin.collections.LinkedHashSet
@@ -23,11 +25,11 @@ import kotlin.collections.LinkedHashSet
 fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
 
 val mapper = jacksonObjectMapper()
+var lobbies: MutableList<Lobby> = mutableListOf()
 
 
 @Suppress("unused") // Referenced in application.conf
-@kotlin.jvm.JvmOverloads
-fun Application.module(testing: Boolean = false) {
+fun Application.module() {
 
     install(ContentNegotiation) {
         jackson {
@@ -38,7 +40,7 @@ fun Application.module(testing: Boolean = false) {
             })
         }
     }
-    install(io.ktor.websocket.WebSockets) {
+    install(WebSockets) {
         pingPeriod = Duration.ofSeconds(15)
         timeout = Duration.ofSeconds(15)
         maxFrameSize = Long.MAX_VALUE
@@ -48,45 +50,70 @@ fun Application.module(testing: Boolean = false) {
     routing {
         this.root()
 
-        val clients = Collections.synchronizedSet(LinkedHashSet<Client>())
+        val userSessions = Collections.synchronizedSet(LinkedHashSet<UserSession>())
         webSocket("/lobby") {
-            val client = Client(this)
-            println(client.name)
-
-            clients += client
+            val userSession = UserSession(this)
+            userSessions += userSession
 
             try {
                 while (true) {
-                    val frame = incoming.receive()
-                    when(frame) {
+                    when(val frame = incoming.receive()) {
                         is Frame.Text -> {
                             val text = frame.readText()
                             val lobbyRequestMessage: LobbyRequestMessage = mapper.readValue(text)
 
-//                            val textToSend = "$text"
+                            val user = User(userSession.id, lobbyRequestMessage.userName)
+                            println(user.name + " " + user.userID)
+
                             when(lobbyRequestMessage.eventName) {
                                 LobbyRequestEventName.CREATE_LOBBY.name ->
-                                    createLobby(outgoing, lobbyRequestMessage)
+                                    createLobby(outgoing, user)
                                 LobbyRequestEventName.CONNECT_TO_LOBBY.name ->
-                                    connectToLobby(outgoing, lobbyRequestMessage)
+                                    connectToLobby(lobbyRequestMessage, user, userSessions)
                             }
-//                            clients.forEach {it.session.outgoing.send(Frame.Text(textToSend)) }
-
                         }
                     }
                 }
             } finally {
-                clients -= client
+                userSessions -= userSession
             }
         }
     }
 }
 
-suspend fun connectToLobby(outgoing: SendChannel<Frame>, lobbyRequestMessage: LobbyRequestMessage) {
-    outgoing.send(Frame.Text(lobbyRequestMessage.toJSON()))
+suspend fun createLobby(outgoing: SendChannel<Frame>,
+                        user: User) {
+    val lobby = Lobby()
+    lobby.users.add(user)
+    lobbies.add(lobby)
+
+    outgoing.send(Frame.Text(lobby.toJSON()))
 }
 
-suspend fun createLobby(outgoing: SendChannel<Frame>, lobbyRequestMessage: LobbyRequestMessage) {
-    outgoing.send(Frame.Text(lobbyRequestMessage.toJSON()))
+suspend fun connectToLobby(
+        lobbyRequestMessage: LobbyRequestMessage,
+        user: User,
+        userSessions: MutableSet<UserSession>, ) {
+
+    lobbies.find { lobby ->
+        lobbyRequestMessage.code.equals(lobby.code)
+    }?.users?.add(user)
+
+    val lobby = lobbies.find { lobby ->
+        lobbyRequestMessage.code.equals(lobby.code)
+    }
+
+    lobby?.users?.forEach { _ -> sendResponse(user.userID, userSessions, lobby.toJSON()) }
+
 }
+
+suspend fun sendResponse(id: UUID,
+                         userSessions: MutableSet<UserSession>,
+                         response: String) {
+    userSessions.find { userSession ->
+        id == userSession.id
+    }?.session?.send(Frame.Text(response))
+
+}
+
 
