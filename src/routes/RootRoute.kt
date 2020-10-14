@@ -1,4 +1,4 @@
-package pl.sose1
+package pl.sose1.routes
 
 import io.ktor.application.*
 import io.ktor.http.*
