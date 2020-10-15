@@ -103,8 +103,7 @@ suspend fun createLobby(outgoing: SendChannel<Frame>,
 
     println("CREATE: LOBBY_ID = ${lobby.lobbyId}")
 
-    val response: LobbyResponse = Registered(user, lobby.lobbyId, lobby.code, lobby.creatorId)
-    outgoing.sendJson(response)
+    outgoing.sendJson(Registered(user, lobby.lobbyId, lobby.code, lobby.creatorId) as LobbyResponse)
 }
 
 suspend fun registerToLobby(outgoing: SendChannel<Frame>,
@@ -116,8 +115,7 @@ suspend fun registerToLobby(outgoing: SendChannel<Frame>,
         lobby.users.add(user)
         println("USER - ${user.name} registered to lobby: LOBBY_ID = ${lobby.lobbyId}")
 
-        val response: LobbyResponse = Registered(user, lobby.lobbyId, lobby.code, lobby.creatorId)
-        outgoing.sendJson(response)
+        outgoing.sendJson(Registered(user, lobby.lobbyId, lobby.code, lobby.creatorId) as LobbyResponse)
     }
 }
 

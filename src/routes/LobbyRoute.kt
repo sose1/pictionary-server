@@ -59,12 +59,11 @@ fun Routing.lobby() {
 suspend fun connectedUser(userSessions: MutableSet<UserSession>,
                           request: Connect,
                           userSession: UserSession) {
-    val response: LobbyResponse = Users(lobby.users)
 
     val user = findUserById(request.userId)
     user?.sessionId = userSession.id
 
-    lobby.users.forEach { sendResponse(it.sessionId, userSessions, response) }
+    lobby.users.forEach { sendResponse(it.sessionId, userSessions, Users(lobby.users) as LobbyResponse) }
 }
 
 suspend fun disconnectUser(userSessions: MutableSet<UserSession>,
@@ -83,7 +82,7 @@ suspend fun disconnectUser(userSessions: MutableSet<UserSession>,
                 lobbies.remove(lobby)
                 lobby.users.forEach { TODO("Info o usunieciu lobby i wyrzucenie do home activity") }
             }
-            lobby.users.forEach { sendResponse(it.sessionId, userSessions, response) }
+            lobby.users.forEach { sendResponse(it.sessionId, userSessions,Users(lobby.users) as LobbyResponse) }
         }
     }
 }
