@@ -1,23 +1,22 @@
 package pl.sose1
 
-import com.fasterxml.jackson.core.util.DefaultIndenter
-import com.fasterxml.jackson.core.util.DefaultPrettyPrinter
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
 import io.ktor.application.*
 import io.ktor.features.*
+import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
-import io.ktor.jackson.*
 import io.ktor.routing.*
+import io.ktor.serialization.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.channels.SendChannel
-import pl.sose1.model.error.ErrorResponse
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import model.lobby.LobbyResponse
+import model.lobby.Registered
+import pl.sose1.model.lobby.Create
 import pl.sose1.model.lobby.Lobby
-import pl.sose1.model.lobby.LobbyConnectResponse
-import pl.sose1.model.lobby.RegisterRequest
-import pl.sose1.model.lobby.RequestEventName
+import pl.sose1.model.lobby.LobbyRequest
+import pl.sose1.model.lobby.Register
 import pl.sose1.model.user.User
 import pl.sose1.model.user.UserSession
 import pl.sose1.routes.lobby
@@ -28,7 +27,6 @@ import kotlin.collections.LinkedHashSet
 
 fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
 
-val mapper = jacksonObjectMapper()
 var lobbies: MutableList<Lobby> = mutableListOf()
 
 
@@ -36,13 +34,17 @@ var lobbies: MutableList<Lobby> = mutableListOf()
 fun Application.module() {
 
     install(ContentNegotiation) {
-        jackson {
-            enable(SerializationFeature.INDENT_OUTPUT)
-            setDefaultPrettyPrinter ( DefaultPrettyPrinter (). apply {
-                indentArraysWith ( DefaultPrettyPrinter.FixedSpaceIndenter .instance)
-                indentObjectsWith ( DefaultIndenter ( "   " , " \n " ))
-            })
-        }
+        json(
+                contentType = ContentType.Application.Json,
+                json = Json {
+                    encodeDefaults = true
+                    isLenient = true
+                    allowSpecialFloatingPointValues = true
+                    allowStructuredMapKeys = true
+                    prettyPrint = true
+                    useArrayPolymorphism = true
+                }
+        )
     }
     install(WebSockets) {
         pingPeriod = Duration.ofSeconds(15)
@@ -66,15 +68,22 @@ fun Application.module() {
                     when (val frame = incoming.receive()) {
                         is Frame.Text -> {
                             val text = frame.readText()
-                            val request: RegisterRequest = mapper.readValue(text)
+                            println("REQUEST: $text")
 
-                            val user = User(request.userName, userSession.id)
+                            val request: LobbyRequest = Json.decodeFromString(text)
 
-                            when (request.eventName) {
-                                RequestEventName.CREATE_LOBBY ->
-                                    createLobby(outgoing, user)
-                                RequestEventName.REGISTER_TO_LOBBY ->
-                                    registerToLobby(request.code, user, outgoing)
+                            when (request) {
+                                is Create ->
+                                    createLobby(outgoing,
+                                            User(request.userName,
+                                                    userSession.id)
+                                    )
+                                is Register ->
+                                    registerToLobby(outgoing,
+                                            User(request.userName,
+                                                    userSession.id),
+                                            request.code
+                                    )
                             }
                         }
                     }
@@ -86,27 +95,36 @@ fun Application.module() {
     }
 }
 
-suspend fun createLobby(outgoing: SendChannel<Frame>, user: User) {
+suspend fun createLobby(outgoing: SendChannel<Frame>,
+                        user: User) {
     val lobby = Lobby(user.userId)
     lobby.users.add(user)
     lobbies.add(lobby)
 
-    println("${user.name} created lobby: lobbyId = ${lobby.lobbyId}")
+    println("CREATE: LOBBY_ID = ${lobby.lobbyId}")
 
-    outgoing.send(Frame.Text(LobbyConnectResponse(user, lobby.lobbyId, lobby.code, lobby.creatorId).toJSON()))
+    val response: LobbyResponse = Registered(user, lobby.lobbyId, lobby.code, lobby.creatorId)
+    outgoing.sendJson(response)
 }
 
-suspend fun registerToLobby(code: String?, user: User, outgoing: SendChannel<Frame> ) {
+suspend fun registerToLobby(outgoing: SendChannel<Frame>,
+                            user: User,
+                            code: String? ) {
     val lobby = findLobbyByCode(code)
 
     if (lobby != null) {
         lobby.users.add(user)
-        println("${user.name} registered to lobby: lobbyId = ${lobby.lobbyId}")
+        println("USER - ${user.name} registered to lobby: LOBBY_ID = ${lobby.lobbyId}")
 
-        outgoing.send(Frame.Text(LobbyConnectResponse(user, lobby.lobbyId, lobby.code, lobby.creatorId).toJSON()))
+        val response: LobbyResponse = Registered(user, lobby.lobbyId, lobby.code, lobby.creatorId)
+        outgoing.sendJson(response)
     }
 }
 
-fun findLobbyByCode(code: String?): Lobby? = lobbies.find { lobby -> code == lobby.code }
+fun findLobbyByCode(code: String?): Lobby? = lobbies.find { lobby ->
+    code == lobby.code
+}
 
-fun Any.toJSON(): String = ObjectMapper().writeValueAsString(this)
+suspend inline fun <reified T>SendChannel<Frame>.sendJson(body: T) {
+    send(Frame.Text(Json.encodeToString(body)))
+}

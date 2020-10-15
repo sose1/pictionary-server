@@ -1,5 +1,26 @@
 package pl.sose1.model.lobby
 
-import java.util.*
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-data class LobbyRequest(val userId: UUID, val eventName: RequestEventName)
+@Serializable
+sealed class LobbyRequest
+
+@Serializable
+@SerialName("Register")
+class Register(
+        val userName: String,
+        val code: String? = null
+) : LobbyRequest()
+
+@Serializable
+@SerialName("Create")
+class Create(
+        val userName: String
+) : LobbyRequest()
+
+@Serializable
+@SerialName("Connect")
+class Connect(
+        val userId: String,
+) : LobbyRequest()

@@ -1,17 +1,20 @@
 package pl.sose1.routes
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
+
 import io.ktor.http.cio.websocket.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import model.lobby.LobbyResponse
+import model.lobby.Users
 import pl.sose1.lobbies
+import pl.sose1.model.lobby.Connect
 import pl.sose1.model.lobby.Lobby
 import pl.sose1.model.lobby.LobbyRequest
-import pl.sose1.model.lobby.RequestEventName
 import pl.sose1.model.user.User
 import pl.sose1.model.user.UserSession
-import pl.sose1.toJSON
 import java.util.*
 import kotlin.collections.LinkedHashSet
 
@@ -19,12 +22,11 @@ private lateinit var lobby: Lobby
 
 fun Routing.lobby() {
 
-    val mapper = jacksonObjectMapper()
     val userSessions = Collections.synchronizedSet(LinkedHashSet<UserSession>())
 
 
     webSocket("/lobby/{id}") {
-        println("Find lobby by id: ${call.parameters["id"]}")
+        println("Find lobby by ID: ${call.parameters["id"]}")
 
         lobby = findLobbyById(call.parameters["id"])!!
 
@@ -36,14 +38,11 @@ fun Routing.lobby() {
                 when (val frame = incoming.receive() ) {
                     is Frame.Text -> {
                         val text = frame.readText()
-                        val request: LobbyRequest = mapper.readValue(text)
+                        val request: LobbyRequest = Json.decodeFromString(text)
 
-                        val user = findUserById(request.userId)
-                        user?.sessionId = userSession.id
-
-                        when (request.eventName) {
-                            RequestEventName.CONNECT -> connectedUser(userSessions)
-
+                        when (request) {
+                            is Connect -> connectedUser(userSessions, request, userSession)
+                            else -> { }
                         }
                     }
                 }
@@ -57,11 +56,21 @@ fun Routing.lobby() {
 }
 
 
-suspend fun connectedUser(userSessions: MutableSet<UserSession>) {
-    lobby.users.forEach { sendResponse(it.sessionId, userSessions, lobby.toJSON()) }
+suspend fun connectedUser(userSessions: MutableSet<UserSession>,
+                          request: Connect,
+                          userSession: UserSession) {
+    val response: LobbyResponse = Users(lobby.users)
+
+    val user = findUserById(request.userId)
+    user?.sessionId = userSession.id
+
+    lobby.users.forEach { sendResponse(it.sessionId, userSessions, response) }
 }
 
-suspend fun disconnectUser(userSessions: MutableSet<UserSession>, sessionId: UUID) {
+suspend fun disconnectUser(userSessions: MutableSet<UserSession>,
+                           sessionId: String) {
+    val response: LobbyResponse = Users(lobby.users)
+
     lobbies.forEach {lobby ->
         val user = lobby.users.find { user ->
             sessionId == user.sessionId
@@ -74,16 +83,21 @@ suspend fun disconnectUser(userSessions: MutableSet<UserSession>, sessionId: UUI
                 lobbies.remove(lobby)
                 lobby.users.forEach { TODO("Info o usunieciu lobby i wyrzucenie do home activity") }
             }
-            lobby.users.forEach { sendResponse(it.sessionId, userSessions, lobby.toJSON()) }
+            lobby.users.forEach { sendResponse(it.sessionId, userSessions, response) }
         }
     }
 }
 
-suspend fun sendResponse(sessionId: UUID, userSessions: MutableSet<UserSession>, response: String) {
+suspend fun sendResponse(sessionId: String,
+                         userSessions: MutableSet<UserSession>,
+                         response: LobbyResponse) {
     userSessions.find { userSession ->
         sessionId == userSession.id
-    }?.session?.send(Frame.Text(response))
+    }?.session?.send(Frame.Text(Json.encodeToString(response)))
 }
 
-fun findLobbyById(lobbyId: String?): Lobby? = lobbies.find { lobby -> lobbyId == lobby.lobbyId.toString() }
-fun findUserById(userID: UUID): User? = lobby.users.find { user -> userID == user.userId }
+fun findLobbyById(lobbyId: String?): Lobby? = lobbies.find { lobby ->
+    lobbyId == lobby.lobbyId }
+
+fun findUserById(userID: String): User? = lobby.users.find { user ->
+    userID == user.userId }
