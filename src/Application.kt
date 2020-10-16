@@ -113,7 +113,7 @@ suspend fun registerToLobby(outgoing: SendChannel<Frame>,
 
     if (lobby != null) {
         lobby.users.add(user)
-        println("USER - ${user.name} registered to lobby: LOBBY_ID = ${lobby.lobbyId}")
+        println("REGISTER TO ${lobby.lobbyId}, USER: ${user.userId}")
 
         outgoing.sendJson(Registered(user, lobby.lobbyId, lobby.code, lobby.creatorId) as LobbyResponse)
     }

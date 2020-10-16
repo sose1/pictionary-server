@@ -8,6 +8,7 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import model.lobby.LobbyResponse
+import model.lobby.NewCreator
 import model.lobby.Users
 import pl.sose1.lobbies
 import pl.sose1.model.lobby.Connect
@@ -26,8 +27,6 @@ fun Routing.lobby() {
 
 
     webSocket("/lobby/{id}") {
-        println("Find lobby by ID: ${call.parameters["id"]}")
-
         lobby = findLobbyById(call.parameters["id"])!!
 
         val userSession = UserSession(this)
@@ -35,14 +34,15 @@ fun Routing.lobby() {
 
         try {
             while (true) {
-                when (val frame = incoming.receive() ) {
+                when (val frame = incoming.receive()) {
                     is Frame.Text -> {
                         val text = frame.readText()
                         val request: LobbyRequest = Json.decodeFromString(text)
 
                         when (request) {
                             is Connect -> connectedUser(userSessions, request, userSession)
-                            else -> { }
+                            else -> {
+                            }
                         }
                     }
                 }
@@ -54,7 +54,6 @@ fun Routing.lobby() {
 
     }
 }
-
 
 suspend fun connectedUser(userSessions: MutableSet<UserSession>,
                           request: Connect,
@@ -68,19 +67,21 @@ suspend fun connectedUser(userSessions: MutableSet<UserSession>,
 
 suspend fun disconnectUser(userSessions: MutableSet<UserSession>,
                            sessionId: String) {
-    val response: LobbyResponse = Users(lobby.users)
-
     lobbies.forEach {lobby ->
         val user = lobby.users.find { user ->
             sessionId == user.sessionId
         }
 
-        print("${user?.name}, ${user?.userId}")
+        println("DISCONNECT: ${user?.userId}")
 
         user?.let { lobby.users.remove(user)
             if (user.userId == lobby.creatorId) {
-                lobbies.remove(lobby)
-                lobby.users.forEach { TODO("Info o usunieciu lobby i wyrzucenie do home activity") }
+                val newCreator = lobby.users.random()
+
+                lobby.creatorId = newCreator.userId
+                println("NEW CREATOR ID ${lobby.creatorId}")
+
+                sendResponse(newCreator.sessionId, userSessions, NewCreator(lobby.creatorId) as LobbyResponse)
             }
             lobby.users.forEach { sendResponse(it.sessionId, userSessions,Users(lobby.users) as LobbyResponse) }
         }
