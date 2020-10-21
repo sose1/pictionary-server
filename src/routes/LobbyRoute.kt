@@ -37,9 +37,8 @@ fun Routing.lobby() {
                 when (val frame = incoming.receive()) {
                     is Frame.Text -> {
                         val text = frame.readText()
-                        val request: LobbyRequest = Json.decodeFromString(text)
 
-                        when (request) {
+                        when (val request: LobbyRequest = Json.decodeFromString(text)) {
                             is Connect -> connectedUser(userSessions, request, userSession)
                             else -> {
                             }
@@ -75,9 +74,10 @@ suspend fun disconnectUser(userSessions: MutableSet<UserSession>,
         println("DISCONNECT: ${user?.userId}")
 
         user?.let { lobby.users.remove(user)
+            deleteLobby(lobby)
+
             if (user.userId == lobby.creatorId) {
                 val newCreator = lobby.users.random()
-
                 lobby.creatorId = newCreator.userId
                 println("NEW CREATOR ID ${lobby.creatorId}")
 
@@ -94,6 +94,14 @@ suspend fun sendResponse(sessionId: String,
     userSessions.find { userSession ->
         sessionId == userSession.id
     }?.session?.send(Frame.Text(Json.encodeToString(response)))
+}
+
+
+private fun deleteLobby(lobby: Lobby) {
+    if (lobby.users.isEmpty()) {
+        println("DELETE: LOBBY_ID ${lobby.lobbyId}")
+        lobbies.remove(lobby)
+    }
 }
 
 fun findLobbyById(lobbyId: String?): Lobby? = lobbies.find { lobby ->
