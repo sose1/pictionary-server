@@ -27,3 +27,9 @@ class Users(
 class NewCreator(
         val creatorId: String
 ) : LobbyResponse()
+
+@Serializable
+@SerialName("Error")
+class Error(
+        val errorCode: Int
+) : LobbyResponse()

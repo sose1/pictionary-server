@@ -11,6 +11,7 @@ import kotlinx.coroutines.channels.SendChannel
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import model.lobby.Error
 import model.lobby.LobbyResponse
 import model.lobby.Registered
 import pl.sose1.model.lobby.Create
@@ -70,9 +71,7 @@ fun Application.module() {
                             val text = frame.readText()
                             println("REQUEST: $text")
 
-                            val request: LobbyRequest = Json.decodeFromString(text)
-
-                            when (request) {
+                            when (val request: LobbyRequest = Json.decodeFromString(text)) {
                                 is Create ->
                                     createLobby(outgoing,
                                             User(request.userName,
@@ -116,6 +115,8 @@ suspend fun registerToLobby(outgoing: SendChannel<Frame>,
         println("REGISTER TO ${lobby.lobbyId}, USER: ${user.userId}")
 
         outgoing.sendJson(Registered(user, lobby.lobbyId, lobby.code, lobby.creatorId) as LobbyResponse)
+    } else {
+        outgoing.sendJson(Error(404) as LobbyResponse)
     }
 }
 
