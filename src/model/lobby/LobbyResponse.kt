@@ -2,6 +2,7 @@ package model.lobby
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import pl.sose1.model.lobby.Message
 import pl.sose1.model.user.User
 
 @Serializable
@@ -32,4 +33,10 @@ class NewCreator(
 @SerialName("Error")
 class Error(
         val errorCode: Int
+) : LobbyResponse()
+
+@Serializable
+@SerialName("Messages")
+class Messages(
+        val messages: MutableList<Message>
 ) : LobbyResponse()

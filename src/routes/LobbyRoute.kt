@@ -8,12 +8,14 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import model.lobby.LobbyResponse
+import model.lobby.Messages
 import model.lobby.NewCreator
 import model.lobby.Users
 import pl.sose1.lobbies
 import pl.sose1.model.lobby.Connect
 import pl.sose1.model.lobby.Lobby
 import pl.sose1.model.lobby.LobbyRequest
+import pl.sose1.model.lobby.Message
 import pl.sose1.model.user.User
 import pl.sose1.model.user.UserSession
 import java.util.*
@@ -40,8 +42,8 @@ fun Routing.lobby() {
 
                         when (val request: LobbyRequest = Json.decodeFromString(text)) {
                             is Connect -> connectedUser(userSessions, request, userSession)
-                            else -> {
-                            }
+                            is Message -> sendMessage(request, userSessions)
+                            else -> { }
                         }
                     }
                 }
@@ -54,6 +56,33 @@ fun Routing.lobby() {
     }
 }
 
+suspend fun sendMessage(request: Message,
+                        userSessions: MutableSet<UserSession>) {
+
+
+    lobby.messages.add(Message(request.text, request.authorId, "incoming", request.authorName))
+    lobby.users.forEach { sendMessages(it, userSessions, lobby) }
+}
+
+suspend fun sendMessages(user: User,
+                         userSessions: MutableSet<UserSession>,
+                         lobby: Lobby) {
+
+    val userSession = userSessions.find { userSession ->
+        user.sessionId == userSession.id
+    }!!
+
+    lobby.messages.forEach { message ->
+        if (message.authorId == user.userId && user.sessionId == userSession.id ) {
+            message.messageType = "send"
+        } else {
+            message.messageType = "incoming"
+        }
+    }
+
+    userSession.session.send(Frame.Text(Json.encodeToString(Messages(lobby.messages) as LobbyResponse)))
+}
+
 suspend fun connectedUser(userSessions: MutableSet<UserSession>,
                           request: Connect,
                           userSession: UserSession) {
@@ -61,7 +90,11 @@ suspend fun connectedUser(userSessions: MutableSet<UserSession>,
     val user = findUserById(request.userId)
     user?.sessionId = userSession.id
 
+    if (lobby.messages.isNotEmpty()) {
+        lobby.users.forEach { sendMessages(it, userSessions, lobby) }
+    }
     lobby.users.forEach { sendResponse(it.sessionId, userSessions, Users(lobby.users) as LobbyResponse) }
+
 }
 
 suspend fun disconnectUser(userSessions: MutableSet<UserSession>,

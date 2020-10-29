@@ -13,4 +13,5 @@ class Lobby(
     val code = (1 .. 5)
             .map { charPool.random() }
             .joinToString("")
+    val messages: MutableList<Message> = mutableListOf()
 }
