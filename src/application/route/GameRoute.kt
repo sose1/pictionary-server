@@ -53,6 +53,9 @@ fun Routing.game() {
                     when (val request: GameRequest = Json.decodeFromString(text)) {
                         is SendMessage -> gameController.sendMessage(request, gameId, session)
                     }
+                } else {
+                    val byteArray = it.readBytes()
+                    gameController.sendByteArray(byteArray, gameId)
                 }
             }
         } finally {

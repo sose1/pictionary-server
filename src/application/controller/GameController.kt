@@ -30,7 +30,7 @@ class GameController(
 
     suspend fun getGameById(id: String, call: ApplicationCall) {
         val game = gameRepository.findById(id) ?: throw Exception()
-        println("GetGameByCode: GAME ID ${game.id}")
+        println("GetGameById: GAME ID ${game.id}")
 
         call.respond(game)
     }
@@ -45,5 +45,9 @@ class GameController(
 
     suspend fun sendMessage(sendMessageRequest: SendMessage, gameId: String, session: UserSession ) {
         gameService.sendMessage(sendMessageRequest.text, gameId, session.id)
+    }
+
+    suspend fun sendByteArray(byteArray: ByteArray, gameId: String) {
+        gameService.sendByteArray(byteArray, gameId)
     }
 }

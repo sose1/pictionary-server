@@ -2,6 +2,7 @@ package pl.sose1.application.publisher
 
 import application.model.game.*
 import domain.event.ResponseEvent
+import io.ktor.http.cio.websocket.*
 import pl.sose1.application.utils.sendJson
 import pl.sose1.domain.`interface`.EventPublisher
 import pl.sose1.domain.`interface`.GameRepository
@@ -27,6 +28,14 @@ class SocketEventPublisher(
         val session = sessionRepository.findById(userId)
 
         session?.outgoing?.sendJson(event.toApplicationEvent())
+    }
+
+    override suspend fun byteBroadcast(gameId: String, byteArray: ByteArray) {
+        val game = gameRepository.findById(gameId) ?: throw Exception()
+        val sockets = sessionRepository.findAllByIds(game.users.map { it.id })
+        sockets.forEach {
+            it.outgoing.send(Frame.Binary(true,byteArray))
+        }
     }
 
     private fun ResponseEvent.toApplicationEvent(): GameResponse =

@@ -7,4 +7,5 @@ interface EventPublisher {
     suspend fun broadcast(gameId: String, event: ResponseEvent)
 
     suspend fun send(userId: String, event: ResponseEvent)
+    suspend fun byteBroadcast(gameId: String, byteArray: ByteArray)
 }

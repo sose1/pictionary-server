@@ -75,4 +75,10 @@ class GameService(
 
         eventPublisher.broadcast(gameId, ResponseEvent.Message(message.content, message.author))
     }
+
+   suspend fun sendByteArray(byteArray: ByteArray, gameId: String) {
+        val game = gameRepository.findById(gameId) ?: throw Exception()
+
+        eventPublisher.byteBroadcast(gameId, byteArray)
+    }
 }
