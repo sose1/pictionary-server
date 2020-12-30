@@ -31,3 +31,9 @@ class Message(
 class NewUser(
     val user: User
 ) : GameResponse()
+
+@Serializable
+@SerialName("GameStarted")
+class GameStarted(
+    val isStarted: Boolean
+) : GameResponse()

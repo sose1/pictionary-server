@@ -44,5 +44,6 @@ class SocketEventPublisher(
             is ResponseEvent.AllUsers -> Users(users)
             is ResponseEvent.Message -> Message(content, author)
             is ResponseEvent.NewUser -> NewUser(user)
+            is ResponseEvent.GameStarted -> GameStarted(isStarted)
         }
 }

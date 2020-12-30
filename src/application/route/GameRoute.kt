@@ -55,7 +55,7 @@ fun Routing.game() {
                     }
                 } else {
                     val byteArray = it.readBytes()
-                    gameController.sendByteArray(byteArray, gameId)
+                    gameController.onPathDrawn(byteArray, gameId)
                 }
             }
         } finally {

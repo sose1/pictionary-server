@@ -47,7 +47,7 @@ class GameController(
         gameService.sendMessage(sendMessageRequest.text, gameId, session.id)
     }
 
-    suspend fun sendByteArray(byteArray: ByteArray, gameId: String) {
-        gameService.sendByteArray(byteArray, gameId)
+    suspend fun onPathDrawn(byteArray: ByteArray, gameId: String) {
+        gameService.onPathDrawn(byteArray, gameId)
     }
 }
