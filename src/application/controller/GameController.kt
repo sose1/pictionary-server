@@ -3,6 +3,7 @@ package pl.sose1.application.controller
 import application.model.game.SendMessage
 import application.model.user.UserSession
 import io.ktor.application.*
+import io.ktor.features.*
 import io.ktor.response.*
 import pl.sose1.domain.`interface`.GameRepository
 import pl.sose1.domain.service.GameService
@@ -20,7 +21,7 @@ class GameController(
     }
 
     suspend fun getGameByCode(code: String, call: ApplicationCall) {
-        val game = gameRepository.findByCode(code) ?: throw Exception()
+        val game = gameRepository.findByCode(code) ?: throw NotFoundException()
 
         println("GetGameByCode: GAME ID ${game.id}")
 

@@ -13,7 +13,7 @@ fun Routing.root() {
     }
 
     get("/game/code/{code}") {
-        val code = this.call.parameters["code"] ?: throw Exception() //todo twoje
+        val code = this.call.parameters["code"] ?: throw Exception()
         gameController.getGameByCode(code, context)
     }
 
