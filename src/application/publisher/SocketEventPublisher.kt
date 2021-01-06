@@ -26,13 +26,13 @@ class SocketEventPublisher(
 
     override suspend fun send(userId: String, event: ResponseEvent) {
         val session = sessionRepository.findById(userId)
-
         session?.outgoing?.sendJson(event.toApplicationEvent())
     }
 
     override suspend fun byteBroadcast(gameId: String, byteArray: ByteArray) {
         val game = gameRepository.findById(gameId) ?: throw Exception()
         val sockets = sessionRepository.findAllByIds(game.users.map { it.id })
+
         sockets.forEach {
             it.outgoing.send(Frame.Binary(true,byteArray))
         }

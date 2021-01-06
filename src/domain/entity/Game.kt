@@ -28,7 +28,6 @@ class Game(
     val users: MutableList<User> = mutableListOf()
     val messages: MutableList<Message> = mutableListOf()
 
-
     fun sessionBelongsToGame(sessionId: String): Boolean =
         users.find { sessionId == it.id } != null
 

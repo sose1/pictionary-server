@@ -47,7 +47,7 @@ fun Routing.game() {
 
         try {
             incoming.consumeEach {
-                if(it is Frame.Text) {
+                if (it is Frame.Text) {
                     val text = it.readText()
 
                     when (val request: GameRequest = Json.decodeFromString(text)) {

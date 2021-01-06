@@ -21,16 +21,14 @@ class GameService(
     private val system = User("SYSTEM", "0")
 
     init {
-
-        gameRepository.save(Game(null))
-        gameRepository.save(Game(null))
-        gameRepository.save(Game(null))
+        for (i in 1..5) {
+            gameRepository.save(Game(null))
+        }
     }
 
     suspend fun saveUserInGame(userName: String, sessionId: String, gameId: String) {
         val game = gameRepository.findById(gameId) ?: throw Exception()
         val user = User(userName, sessionId)
-
 
         if (game.owner == null) {
             game.owner = user
@@ -38,16 +36,19 @@ class GameService(
 
         game.users.add(user)
 
-        val message = Message("$userName dołącza do gry!", system)
-        eventPublisher.broadcast(gameId, ResponseEvent.Message(message.content, message.author))
-
+        eventPublisher.broadcast(gameId,
+            ResponseEvent.Message("$userName dołącza do gry!", system)
+        )
 
         if (game.users.size >= 2) {
             game.isStarted = true
-            eventPublisher.broadcast(gameId, ResponseEvent.GameStarted(game.isStarted))
+            eventPublisher.broadcast(gameId,
+                ResponseEvent.GameStarted(game.isStarted)
+            )
         } else {
-            val message = Message("DO ROZPOCZĘCIA GRY POTRZEBA 2 GRACZY", system)
-            eventPublisher.broadcast(gameId, ResponseEvent.Message(message.content, message.author))
+            eventPublisher.broadcast(gameId,
+                ResponseEvent.Message("DO ROZPOCZĘCIA GRY POTRZEBA 2 GRACZY", system)
+            )
         }
 
         userRepository.save(user)
@@ -62,26 +63,27 @@ class GameService(
 
         game.users.remove(disconnectedUser)
 
-        if (game.owner?.id == disconnectedUser.id) {
-            val newOwner = game.users.randomOrNull()
+        eventPublisher.broadcast(gameId,
+            ResponseEvent.Message("${disconnectedUser.name} wyszedł z gry!", system)
+        )
 
-            game.owner = newOwner
-            newOwner?.let {
-                eventPublisher.send(it.id, ResponseEvent.NewOwner(it))
+        when (game.owner?.id) {
+            disconnectedUser.id -> {
+                game.owner = game.users.randomOrNull()
+                game.owner?.let {
+                    eventPublisher.send(it.id, ResponseEvent.NewOwner(it))
+                }
             }
         }
 
-
-        val message = Message("${disconnectedUser.name} wyszedł z gry!", system)
-        eventPublisher.broadcast(gameId, ResponseEvent.Message(message.content, message.author))
-
         if (game.users.size < 2) {
             game.isStarted = false
-            eventPublisher.broadcast(gameId, ResponseEvent.GameStarted(game.isStarted))
             game.messages.clear()
 
-            val message = Message("DO ROZPOCZĘCIA GRY POTRZEBA 2 GRACZY", system)
-            eventPublisher.broadcast(gameId, ResponseEvent.Message(message.content, message.author))
+            eventPublisher.broadcast(gameId, ResponseEvent.GameStarted(game.isStarted))
+            eventPublisher.broadcast(gameId,
+                ResponseEvent.Message("DO ROZPOCZĘCIA GRY POTRZEBA 2 GRACZY", system)
+            )
         }
 
         if (game.users.isEmpty()) {
@@ -95,7 +97,6 @@ class GameService(
     suspend fun sendMessage(text: String, gameId: String, sessionId: String) {
         val game = gameRepository.findById(gameId) ?: throw Exception()
         val author = userRepository.findBySessionId(sessionId) ?: throw Exception()
-
         val message = Message(text, author)
 
         game.messages.add(message)
@@ -106,17 +107,10 @@ class GameService(
 
     suspend fun onPathDrawn(byteArray: ByteArray, gameId: String) {
         val game = gameRepository.findById(gameId) ?: throw Exception()
-
-        val newImage = ImageIO.read(ByteArrayInputStream(byteArray))
         val image = game.image
+        val newImage = ImageIO.read(ByteArrayInputStream(byteArray))
 
-        val combined = BufferedImage(image.width, image.height, BufferedImage.TYPE_INT_ARGB)
-
-        val graphics = combined.graphics
-        graphics.drawImage(image, 0, 0, null)
-        graphics.drawImage(newImage, 0, 0, null)
-        graphics.dispose()
-        game.image = combined
+        game.image = combinedImage(image, newImage)
 
         val outputStream = ByteArrayOutputStream()
         ImageIO.write(game.image, "PNG", outputStream)
@@ -125,5 +119,16 @@ class GameService(
 
         gameRepository.save(game)
         eventPublisher.byteBroadcast(gameId, byte)
+    }
+
+    private fun combinedImage(image: BufferedImage, newImage: BufferedImage): BufferedImage {
+        val combined = BufferedImage(image.width, image.height, BufferedImage.TYPE_INT_ARGB)
+        val graphics = combined.graphics
+
+        graphics.drawImage(image, 0, 0, null)
+        graphics.drawImage(newImage, 0, 0, null)
+        graphics.dispose()
+
+        return combined
     }
 }
