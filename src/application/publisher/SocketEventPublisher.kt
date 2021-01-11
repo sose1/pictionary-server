@@ -17,10 +17,22 @@ class SocketEventPublisher(
         val game = gameRepository.findById(gameId) ?: throw Exception()
         val sockets = sessionRepository.findAllByIds(game.users.map { it.id })
 
-        val gameResponse = event.toApplicationEvent()
-
-        sockets.forEach {
-            it.outgoing.sendJson(gameResponse)
+        when (val gameResponse = event.toApplicationEvent()) {
+            is Guessing -> {
+                val users = game.users.minus(
+                    game.users.find { user -> user.id == game.painterId }
+                )
+                users.forEach { println(it?.name) }
+                val sockets = sessionRepository.findAllByIds(users.map { it!!.id })
+                sockets.forEach {
+                    it.outgoing.sendJson(gameResponse as GameResponse)
+                }
+            }
+            else -> {
+                sockets.forEach {
+                    it.outgoing.sendJson(gameResponse)
+                }
+            }
         }
     }
 
@@ -31,7 +43,11 @@ class SocketEventPublisher(
 
     override suspend fun byteBroadcast(gameId: String, byteArray: ByteArray) {
         val game = gameRepository.findById(gameId) ?: throw Exception()
-        val sockets = sessionRepository.findAllByIds(game.users.map { it.id })
+        val users = game.users.minus(
+            game.users.find { user -> user.id == game.painterId }
+        )
+
+        val sockets = sessionRepository.findAllByIds(users.map { it!!.id })
 
         sockets.forEach {
             it.outgoing.send(Frame.Binary(true,byteArray))
@@ -45,5 +61,7 @@ class SocketEventPublisher(
             is ResponseEvent.Message -> Message(content, author)
             is ResponseEvent.NewUser -> NewUser(user)
             is ResponseEvent.GameStarted -> GameStarted(isStarted)
+            is ResponseEvent.Painter -> Painter(wordGuess)
+            is ResponseEvent.Guessing -> Guessing
         }
 }

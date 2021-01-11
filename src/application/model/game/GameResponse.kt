@@ -10,20 +10,20 @@ sealed class GameResponse
 @Serializable
 @SerialName("Users")
 class Users(
-        val users: List<User>
+    val users: List<User>
 ) : GameResponse()
 
 @Serializable
 @SerialName("NewOwner")
 class NewOwner(
-        val user: User
+    val user: User
 ) : GameResponse()
 
 @Serializable
 @SerialName("Message")
 class Message(
-        val content: String,
-        val author: User
+    val content: String,
+    val author: User
 ) : GameResponse()
 
 @Serializable
@@ -37,3 +37,13 @@ class NewUser(
 class GameStarted(
     val isStarted: Boolean
 ) : GameResponse()
+
+@Serializable
+@SerialName("Painter")
+class Painter(
+    val wordGuess: String
+) : GameResponse()
+
+@Serializable
+@SerialName("Guessing")
+object Guessing: GameResponse()

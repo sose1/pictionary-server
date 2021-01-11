@@ -10,6 +10,7 @@ import pl.sose1.domain.entity.User
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.File
 import javax.imageio.ImageIO
 
 
@@ -19,6 +20,7 @@ class GameService(
     private val eventPublisher: EventPublisher
 ) {
     private val system = User("SYSTEM", "0")
+    private val file = File("src/domain/resources/words")
 
     init {
         for (i in 1..5) {
@@ -35,26 +37,26 @@ class GameService(
         }
 
         game.users.add(user)
+        userRepository.save(user)
+
+        eventPublisher.send(user.id, ResponseEvent.NewUser(user))
 
         eventPublisher.broadcast(gameId,
             ResponseEvent.Message("$userName dołącza do gry!", system)
         )
 
-        if (game.users.size >= 2) {
+        if (game.users.size == 2) {
             game.isStarted = true
-            eventPublisher.broadcast(gameId,
-                ResponseEvent.GameStarted(game.isStarted)
-            )
-        } else {
-            eventPublisher.broadcast(gameId,
-                ResponseEvent.Message("DO ROZPOCZĘCIA GRY POTRZEBA 2 GRACZY", system)
-            )
+
+            val painterId = game.users.first().id
+            game.painterId = painterId
+            game.newWordGuess(file)
+
+            eventPublisher.send(painterId, ResponseEvent.Painter(game.wordGuess))
+            eventPublisher.broadcast(gameId, ResponseEvent.GameStarted(game.isStarted))
+            eventPublisher.broadcast(gameId, ResponseEvent.Guessing)
         }
-
-        userRepository.save(user)
         gameRepository.save(game)
-
-        eventPublisher.send(user.id, ResponseEvent.NewUser(user))
     }
 
     suspend fun removeUserFromGame(sessionId: String, gameId: String) {
@@ -67,18 +69,18 @@ class GameService(
             ResponseEvent.Message("${disconnectedUser.name} wyszedł z gry!", system)
         )
 
-        when (game.owner?.id) {
-            disconnectedUser.id -> {
-                game.owner = game.users.randomOrNull()
-                game.owner?.let {
-                    eventPublisher.send(it.id, ResponseEvent.NewOwner(it))
-                }
+        if (game.owner?.id == disconnectedUser.id) {
+            game.owner = game.users.randomOrNull()
+            game.owner?.let {
+                eventPublisher.send(it.id, ResponseEvent.NewOwner(it))
             }
         }
 
         if (game.users.size < 2) {
             game.isStarted = false
             game.messages.clear()
+            game.image = BufferedImage(800, 800, BufferedImage.TYPE_INT_ARGB)
+            sendImage(game)
 
             eventPublisher.broadcast(gameId, ResponseEvent.GameStarted(game.isStarted))
             eventPublisher.broadcast(gameId,
@@ -99,10 +101,31 @@ class GameService(
         val author = userRepository.findBySessionId(sessionId) ?: throw Exception()
         val message = Message(text, author)
 
-        game.messages.add(message)
-        gameRepository.save(game)
+        if (author.id != game.painterId) {
+            game.messages.add(message)
+            eventPublisher.broadcast(gameId, ResponseEvent.Message(message.content, message.author))
+        } else {
+            eventPublisher.send(author.id, ResponseEvent.Message("Gdy rysujesz nie możesz wysłać wiadomośći na chat!", system))
+        }
 
-        eventPublisher.broadcast(gameId, ResponseEvent.Message(message.content, message.author))
+        if (game.wordGuess == text.toLowerCase() && author.id != game.painterId) {
+            eventPublisher.broadcast(gameId,
+                ResponseEvent.Message("${author.name} odgadł hasło.\nHasło: ${game.wordGuess}!", system)
+            )
+            game.image = BufferedImage(800, 800, BufferedImage.TYPE_INT_ARGB)
+
+            sendImage(game)
+
+            game.newPainter()
+            game.newWordGuess(file)
+
+            sendImage(game)
+
+            eventPublisher.send(game.painterId, ResponseEvent.Painter(game.wordGuess))
+            eventPublisher.broadcast(gameId, ResponseEvent.Guessing)
+        }
+
+        gameRepository.save(game)
     }
 
     suspend fun onPathDrawn(byteArray: ByteArray, gameId: String) {
@@ -111,14 +134,18 @@ class GameService(
         val newImage = ImageIO.read(ByteArrayInputStream(byteArray))
 
         game.image = combinedImage(image, newImage)
+        gameRepository.save(game)
 
+        sendImage(game)
+    }
+
+    private suspend fun sendImage(game: Game) {
         val outputStream = ByteArrayOutputStream()
         ImageIO.write(game.image, "PNG", outputStream)
 
         val byte = outputStream.toByteArray()
 
-        gameRepository.save(game)
-        eventPublisher.byteBroadcast(gameId, byte)
+        eventPublisher.byteBroadcast(game.id, byte)
     }
 
     private fun combinedImage(image: BufferedImage, newImage: BufferedImage): BufferedImage {

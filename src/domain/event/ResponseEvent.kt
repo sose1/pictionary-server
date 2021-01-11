@@ -10,4 +10,6 @@ sealed class ResponseEvent {
     class Message(val content: String, val author: User) : ResponseEvent()
     class NewUser(val user: User) : ResponseEvent()
     class GameStarted(val isStarted: Boolean) : ResponseEvent()
+    class Painter(val wordGuess: String): ResponseEvent()
+    object Guessing: ResponseEvent()
 }
