@@ -1,1 +1,1 @@
-web: java -jar build/libs/Main.jar
+web: ./build/install/pictionary-server/bin/pictionary-server

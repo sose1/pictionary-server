@@ -23,20 +23,12 @@ sourceSets {
     main.resources.srcDirs = ['resources']
     test.resources.srcDirs = ['testresources']
 }
-task("copyToLib") {
-    doLast {
-        copy {
-            into("$buildDir/libs")
-            from(configurations.compile)
-        }
-    }
+
+
+tasks.create("stage") {
+    dependsOn("installDist")
 }
 
-task("stage") {
-    dependsOn.add("installDist")
-    dependsOn.add("build")
-    dependsOn.add("copyToLib")
-}
 repositories {
     mavenLocal()
     jcenter()
