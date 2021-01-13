@@ -1,1 +1,1 @@
-web: java -jar target/Main.jar
+web: java -jar build/libs/Main.jar

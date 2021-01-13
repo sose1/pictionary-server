@@ -33,6 +33,7 @@ task("copyToLib") {
 }
 
 task("stage") {
+    dependsOn.add("installDist")
     dependsOn.add("build")
     dependsOn.add("copyToLib")
 }
