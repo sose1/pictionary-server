@@ -2,7 +2,7 @@ buildscript {
     repositories {
         jcenter()
     }
-    
+
     dependencies {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath "org.jetbrains.kotlin:kotlin-serialization:$kotlin_version"
@@ -23,7 +23,19 @@ sourceSets {
     main.resources.srcDirs = ['resources']
     test.resources.srcDirs = ['testresources']
 }
+task("copyToLib") {
+    doLast {
+        copy {
+            into("$buildDir/libs")
+            from(configurations.compile)
+        }
+    }
+}
 
+task("stage") {
+    dependsOn.add("build")
+    dependsOn.add("copyToLib")
+}
 repositories {
     mavenLocal()
     jcenter()
