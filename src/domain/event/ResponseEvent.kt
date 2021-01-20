@@ -11,5 +11,5 @@ sealed class ResponseEvent {
     class NewUser(val user: User) : ResponseEvent()
     class GameStarted(val isStarted: Boolean) : ResponseEvent()
     class Painter(val wordGuess: String): ResponseEvent()
-    object Guessing: ResponseEvent()
+    class Guessing(val wordGuessInUnder: String) : ResponseEvent()
 }

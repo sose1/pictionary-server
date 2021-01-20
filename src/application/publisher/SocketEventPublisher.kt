@@ -62,6 +62,6 @@ class SocketEventPublisher(
             is ResponseEvent.NewUser -> NewUser(user)
             is ResponseEvent.GameStarted -> GameStarted(isStarted)
             is ResponseEvent.Painter -> Painter(wordGuess)
-            is ResponseEvent.Guessing -> Guessing
+            is ResponseEvent.Guessing -> Guessing(wordGuessInUnder)
         }
 }

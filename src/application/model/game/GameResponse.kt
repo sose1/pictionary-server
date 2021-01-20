@@ -46,4 +46,6 @@ class Painter(
 
 @Serializable
 @SerialName("Guessing")
-object Guessing: GameResponse()
+class Guessing(
+    val wordGuessInUnder: String
+) : GameResponse()

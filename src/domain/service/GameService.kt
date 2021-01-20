@@ -54,7 +54,9 @@ class GameService(
 
             eventPublisher.send(painterId, ResponseEvent.Painter(game.wordGuess))
             eventPublisher.broadcast(gameId, ResponseEvent.GameStarted(game.isStarted))
-            eventPublisher.broadcast(gameId, ResponseEvent.Guessing)
+
+            val wordGuessInUnder = game.wordGuess.replace("\\S".toRegex(),"_")
+            eventPublisher.broadcast(gameId, ResponseEvent.Guessing(wordGuessInUnder))
         }
         gameRepository.save(game)
     }
@@ -122,7 +124,8 @@ class GameService(
             sendImage(game)
 
             eventPublisher.send(game.painterId, ResponseEvent.Painter(game.wordGuess))
-            eventPublisher.broadcast(gameId, ResponseEvent.Guessing)
+            val wordGuessInUnder = game.wordGuess.replace("\\S".toRegex(),"_")
+            eventPublisher.broadcast(gameId, ResponseEvent.Guessing(wordGuessInUnder))
         }
 
         gameRepository.save(game)
