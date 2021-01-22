@@ -10,5 +10,7 @@ interface SessionRepository {
 
     fun findAllByIds(ids: List<String>): List<WebSocketSession>
 
+    fun findAllByIdsExceptPainter(ids: List<String>, painterId: String): List<WebSocketSession>
+
     fun delete(sessionId: String)
 }

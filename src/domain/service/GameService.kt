@@ -56,8 +56,9 @@ class GameService(
             eventPublisher.broadcast(gameId, ResponseEvent.GameStarted(game.isStarted))
 
             val wordGuessInUnder = game.wordGuess.replace("\\S".toRegex(),"_")
-            eventPublisher.broadcast(gameId, ResponseEvent.Guessing(wordGuessInUnder))
+            eventPublisher.broadcastExceptPainter(gameId, game.painterId, ResponseEvent.Guessing(wordGuessInUnder))
         }
+
         gameRepository.save(game)
     }
 
@@ -124,8 +125,9 @@ class GameService(
             sendImage(game)
 
             eventPublisher.send(game.painterId, ResponseEvent.Painter(game.wordGuess))
+
             val wordGuessInUnder = game.wordGuess.replace("\\S".toRegex(),"_")
-            eventPublisher.broadcast(gameId, ResponseEvent.Guessing(wordGuessInUnder))
+            eventPublisher.broadcastExceptPainter(gameId, game.painterId, ResponseEvent.Guessing(wordGuessInUnder))
         }
 
         gameRepository.save(game)
@@ -148,7 +150,7 @@ class GameService(
 
         val byte = outputStream.toByteArray()
 
-        eventPublisher.byteBroadcast(game.id, byte)
+        eventPublisher.byteBroadcast(game.id, game.painterId, byte)
     }
 
     private fun combinedImage(image: BufferedImage, newImage: BufferedImage): BufferedImage {

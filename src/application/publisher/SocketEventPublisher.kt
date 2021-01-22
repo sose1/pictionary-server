@@ -13,41 +13,34 @@ class SocketEventPublisher(
     private val sessionRepository: SessionRepository
 ) : EventPublisher {
 
-    override suspend fun broadcast(gameId: String, event: ResponseEvent) {
-        val game = gameRepository.findById(gameId) ?: throw Exception()
-        val sockets = sessionRepository.findAllByIds(game.users.map { it.id })
-
-        when (val gameResponse = event.toApplicationEvent()) {
-            is Guessing -> {
-                val users = game.users.minus(
-                    game.users.find { user -> user.id == game.painterId }
-                )
-                users.forEach { println(it?.name) }
-                val sockets = sessionRepository.findAllByIds(users.map { it!!.id })
-                sockets.forEach {
-                    it.outgoing.sendJson(gameResponse as GameResponse)
-                }
-            }
-            else -> {
-                sockets.forEach {
-                    it.outgoing.sendJson(gameResponse)
-                }
-            }
-        }
-    }
-
     override suspend fun send(userId: String, event: ResponseEvent) {
         val session = sessionRepository.findById(userId)
         session?.outgoing?.sendJson(event.toApplicationEvent())
     }
 
-    override suspend fun byteBroadcast(gameId: String, byteArray: ByteArray) {
+    override suspend fun broadcast(gameId: String, event: ResponseEvent) {
         val game = gameRepository.findById(gameId) ?: throw Exception()
-        val users = game.users.minus(
-            game.users.find { user -> user.id == game.painterId }
-        )
+        val sockets = sessionRepository.findAllByIds(game.users.map { it.id })
 
-        val sockets = sessionRepository.findAllByIds(users.map { it!!.id })
+        val gameResponse = event.toApplicationEvent()
+        sockets.forEach {
+            it.outgoing.sendJson(gameResponse)
+        }
+    }
+
+    override suspend fun broadcastExceptPainter(gameId: String, painterId: String, event: ResponseEvent) {
+        val game = gameRepository.findById(gameId) ?: throw Exception()
+        val sockets = sessionRepository.findAllByIdsExceptPainter(game.users.map { it.id }, painterId)
+
+        val gameResponse = event.toApplicationEvent()
+        sockets.forEach {
+            it.outgoing.sendJson(gameResponse)
+        }
+    }
+
+    override suspend fun byteBroadcast(gameId: String,painterId: String, byteArray: ByteArray) {
+        val game = gameRepository.findById(gameId) ?: throw Exception()
+        val sockets = sessionRepository.findAllByIdsExceptPainter(game.users.map { it.id }, painterId)
 
         sockets.forEach {
             it.outgoing.send(Frame.Binary(true,byteArray))
