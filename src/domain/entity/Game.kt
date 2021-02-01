@@ -46,7 +46,7 @@ class Game(
         painterId = painter.id
     }
 
-    fun newWordGuess(file: File) {
+    fun newWordGuessFromFile(file: File) {
         var word = file.readLines().random()
 
         while (wordGuess == word) {

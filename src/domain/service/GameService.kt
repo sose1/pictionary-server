@@ -50,13 +50,13 @@ class GameService(
 
             val painterId = game.users.first().id
             game.painterId = painterId
-            game.newWordGuess(file)
+            game.newWordGuessFromFile(file)
 
             eventPublisher.send(painterId, ResponseEvent.Painter(game.wordGuess))
             eventPublisher.broadcast(gameId, ResponseEvent.GameStarted(game.isStarted))
 
             val wordGuessInUnder = game.wordGuess.replace("\\S".toRegex(),"_")
-            eventPublisher.broadcastExceptPainter(gameId, game.painterId, ResponseEvent.Guessing(wordGuessInUnder))
+            eventPublisher.broadcastExcept(gameId, game.painterId, ResponseEvent.Guessing(wordGuessInUnder))
         }
 
         gameRepository.save(game)
@@ -113,21 +113,21 @@ class GameService(
 
         if (game.wordGuess == text.toLowerCase() && author.id != game.painterId) {
             eventPublisher.broadcast(gameId,
-                ResponseEvent.Message("${author.name} odgadł hasło.\nHasło: ${game.wordGuess}!", system)
+                ResponseEvent.WordGuess(author.name, game.wordGuess)
             )
             game.image = BufferedImage(800, 800, BufferedImage.TYPE_INT_ARGB)
 
             sendImage(game)
 
             game.newPainter()
-            game.newWordGuess(file)
+            game.newWordGuessFromFile(file)
 
             sendImage(game)
 
             eventPublisher.send(game.painterId, ResponseEvent.Painter(game.wordGuess))
 
             val wordGuessInUnder = game.wordGuess.replace("\\S".toRegex(),"_")
-            eventPublisher.broadcastExceptPainter(gameId, game.painterId, ResponseEvent.Guessing(wordGuessInUnder))
+            eventPublisher.broadcastExcept(gameId, game.painterId, ResponseEvent.Guessing(wordGuessInUnder))
         }
 
         gameRepository.save(game)

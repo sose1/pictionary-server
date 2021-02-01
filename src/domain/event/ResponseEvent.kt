@@ -12,4 +12,5 @@ sealed class ResponseEvent {
     class GameStarted(val isStarted: Boolean) : ResponseEvent()
     class Painter(val wordGuess: String): ResponseEvent()
     class Guessing(val wordGuessInUnder: String) : ResponseEvent()
+    class WordGuess(val userName: String, val wordGuess: String) : ResponseEvent()
 }

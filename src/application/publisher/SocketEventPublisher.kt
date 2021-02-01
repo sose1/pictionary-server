@@ -28,9 +28,9 @@ class SocketEventPublisher(
         }
     }
 
-    override suspend fun broadcastExceptPainter(gameId: String, painterId: String, event: ResponseEvent) {
+    override suspend fun broadcastExcept(gameId: String, exceptId: String, event: ResponseEvent) {
         val game = gameRepository.findById(gameId) ?: throw Exception()
-        val sockets = sessionRepository.findAllByIdsExceptPainter(game.users.map { it.id }, painterId)
+        val sockets = sessionRepository.findAllByIdsExcept(game.users.map { it.id }, exceptId)
 
         val gameResponse = event.toApplicationEvent()
         sockets.forEach {
@@ -38,9 +38,9 @@ class SocketEventPublisher(
         }
     }
 
-    override suspend fun byteBroadcast(gameId: String,painterId: String, byteArray: ByteArray) {
+    override suspend fun byteBroadcast(gameId: String, exceptId: String, byteArray: ByteArray) {
         val game = gameRepository.findById(gameId) ?: throw Exception()
-        val sockets = sessionRepository.findAllByIdsExceptPainter(game.users.map { it.id }, painterId)
+        val sockets = sessionRepository.findAllByIdsExcept(game.users.map { it.id }, exceptId)
 
         sockets.forEach {
             it.outgoing.send(Frame.Binary(true,byteArray))
@@ -56,5 +56,6 @@ class SocketEventPublisher(
             is ResponseEvent.GameStarted -> GameStarted(isStarted)
             is ResponseEvent.Painter -> Painter(wordGuess)
             is ResponseEvent.Guessing -> Guessing(wordGuessInUnder)
+            is ResponseEvent.WordGuess -> WordGuess(userName, wordGuess)
         }
 }

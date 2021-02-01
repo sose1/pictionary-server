@@ -49,3 +49,10 @@ class Painter(
 class Guessing(
     val wordGuessInUnder: String
 ) : GameResponse()
+
+@Serializable
+@SerialName("WordGuess")
+class WordGuess(
+    val userName: String,
+    val wordGuess: String
+)  : GameResponse()

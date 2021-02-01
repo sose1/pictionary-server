@@ -17,9 +17,8 @@ class CacheSessionRepository : SessionRepository {
     override fun findAllByIds(ids: List<String>): List<WebSocketSession> =
         sessions.filterKeys { ids.contains(it) }.values.toList()
 
-    override fun findAllByIdsExceptPainter(ids: List<String>, painterId: String): List<WebSocketSession> =
-        sessions.filterKeys { ids.minus(painterId).contains(it) }.values.toList()
-
+    override fun findAllByIdsExcept(ids: List<String>, exceptId: String): List<WebSocketSession> =
+        sessions.filterKeys { ids.minus(exceptId).contains(it) }.values.toList()
 
     override fun delete(sessionId: String) {
         sessions.remove(sessionId)
