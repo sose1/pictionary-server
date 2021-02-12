@@ -53,7 +53,6 @@ class SocketEventPublisher(
             is ResponseEvent.NewOwner -> NewOwnerAdded(user)
             is ResponseEvent.NewUser -> NewUserAdded(user)
             is ResponseEvent.GameStarted -> GameStarted(isStarted)
-            is ResponseEvent.Painter -> Painter(wordGuess)
             is ResponseEvent.FirstRoundStarted -> FirstRoundStarted(newWordGuess, isPainter)
             is ResponseEvent.NextRoundStarted -> NextRoundStarted(userNameWhoGuessed, oldWordGuess, newWordGuess, isPainter)
         }
