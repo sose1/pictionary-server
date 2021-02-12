@@ -8,6 +8,4 @@ sealed class GameRequest
 
 @Serializable
 @SerialName("SendMessage")
-class SendMessage(
-        val text: String
-) : GameRequest()
+class SendMessage(val text: String) : GameRequest()

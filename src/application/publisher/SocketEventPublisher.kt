@@ -49,13 +49,12 @@ class SocketEventPublisher(
 
     private fun ResponseEvent.toApplicationEvent(): GameResponse =
         when (this) {
-            is ResponseEvent.NewOwner -> NewOwner(user)
-            is ResponseEvent.AllUsers -> Users(users)
             is ResponseEvent.Message -> Message(content, author)
-            is ResponseEvent.NewUser -> NewUser(user)
+            is ResponseEvent.NewOwner -> NewOwnerAdded(user)
+            is ResponseEvent.NewUser -> NewUserAdded(user)
             is ResponseEvent.GameStarted -> GameStarted(isStarted)
             is ResponseEvent.Painter -> Painter(wordGuess)
-            is ResponseEvent.Guessing -> Guessing(wordGuessInUnder)
-            is ResponseEvent.WordGuess -> WordGuess(userName, wordGuess)
+            is ResponseEvent.FirstRoundStarted -> FirstRoundStarted(newWordGuess, isPainter)
+            is ResponseEvent.NextRoundStarted -> NextRoundStarted(userNameWhoGuessed, oldWordGuess, newWordGuess, isPainter)
         }
 }

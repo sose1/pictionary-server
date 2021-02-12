@@ -52,11 +52,11 @@ class GameService(
             game.painterId = painterId
             game.newWordGuessFromFile(file)
 
-            eventPublisher.send(painterId, ResponseEvent.Painter(game.wordGuess))
             eventPublisher.broadcast(gameId, ResponseEvent.GameStarted(game.isStarted))
+            eventPublisher.send(painterId, ResponseEvent.FirstRoundStarted(game.wordGuess, true))
 
             val wordGuessInUnder = game.wordGuess.replace("\\S".toRegex(),"_")
-            eventPublisher.broadcastExcept(gameId, game.painterId, ResponseEvent.Guessing(wordGuessInUnder))
+            eventPublisher.broadcastExcept(gameId, game.painterId, ResponseEvent.FirstRoundStarted(wordGuessInUnder, false))
         }
 
         gameRepository.save(game)
@@ -112,9 +112,6 @@ class GameService(
         }
 
         if (game.wordGuess == text.toLowerCase() && author.id != game.painterId) {
-            eventPublisher.broadcast(gameId,
-                ResponseEvent.WordGuess(author.name, game.wordGuess)
-            )
             game.image = BufferedImage(800, 800, BufferedImage.TYPE_INT_ARGB)
 
             sendImage(game)
@@ -122,12 +119,17 @@ class GameService(
             game.newPainter()
             game.newWordGuessFromFile(file)
 
+            eventPublisher.send(game.painterId,
+                ResponseEvent.NextRoundStarted(
+                    author.name, text, game.wordGuess, true)
+            )
+
             sendImage(game)
 
-            eventPublisher.send(game.painterId, ResponseEvent.Painter(game.wordGuess))
-
             val wordGuessInUnder = game.wordGuess.replace("\\S".toRegex(),"_")
-            eventPublisher.broadcastExcept(gameId, game.painterId, ResponseEvent.Guessing(wordGuessInUnder))
+            eventPublisher.broadcastExcept(gameId, game.painterId,
+                ResponseEvent.NextRoundStarted(author.name, text, wordGuessInUnder, false)
+            )
         }
 
         gameRepository.save(game)
